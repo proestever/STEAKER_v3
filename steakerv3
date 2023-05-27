@@ -1,3 +1,27 @@
+//
+//           _____                _____                    _____                    _____                    _____                    _____                    _____
+//          /\    \              /\    \                  /\    \                  /\    \                  /\    \                  /\    \                  /\    \
+//         /::\    \            /::\    \                /::\    \                /::\    \                /::\____\                /::\    \                /::\    \
+//        /::::\    \           \:::\    \              /::::\    \              /::::\    \              /:::/    /               /::::\    \              /::::\    \
+//       /::::::\    \           \:::\    \            /::::::\    \            /::::::\    \            /:::/    /               /::::::\    \            /::::::\    \
+//      /:::/\:::\    \           \:::\    \          /:::/\:::\    \          /:::/\:::\    \          /:::/    /               /:::/\:::\    \          /:::/\:::\    \
+//     /:::/__\:::\    \           \:::\    \        /:::/__\:::\    \        /:::/__\:::\    \        /:::/____/               /:::/__\:::\    \        /:::/__\:::\    \
+//     \:::\   \:::\    \          /::::\    \      /::::\   \:::\    \      /::::\   \:::\    \      /::::\    \              /::::\   \:::\    \      /::::\   \:::\    \
+//   ___\:::\   \:::\    \        /::::::\    \    /::::::\   \:::\    \    /::::::\   \:::\    \    /::::::\____\________    /::::::\   \:::\    \    /::::::\   \:::\    \
+//  /\   \:::\   \:::\    \      /:::/\:::\    \  /:::/\:::\   \:::\    \  /:::/\:::\   \:::\    \  /:::/\:::::::::::\    \  /:::/\:::\   \:::\    \  /:::/\:::\   \:::\____\
+// /::\   \:::\   \:::\____\    /:::/  \:::\____\/:::/__\:::\   \:::\____\/:::/  \:::\   \:::\____\/:::/  |:::::::::::\____\/:::/__\:::\   \:::\____\/:::/  \:::\   \:::|    |
+// \:::\   \:::\   \::/    /   /:::/    \::/    /\:::\   \:::\   \::/    /\::/    \:::\  /:::/    /\::/   |::|~~~|~~~~~     \:::\   \:::\   \::/    /\::/   |::::\  /:::|____|
+//  \:::\   \:::\   \/____/   /:::/    / \/____/  \:::\   \:::\   \/____/  \/____/ \:::\/:::/    /  \/____|::|   |           \:::\   \:::\   \/____/  \/____|:::::\/:::/    /
+//   \:::\   \:::\    \      /:::/    /            \:::\   \:::\    \               \::::::/    /         |::|   |            \:::\   \:::\    \            |:::::::::/    /
+//    \:::\   \:::\____\    /:::/    /              \:::\   \:::\____\               \::::/    /          |::|   |             \:::\   \:::\____\           |::|\::::/    /
+//     \:::\  /:::/    /    \::/    /                \:::\   \::/    /               /:::/    /           |::|   |              \:::\   \::/    /           |::| \::/____/
+//      \:::\/:::/    /      \/____/                  \:::\   \/____/               /:::/    /            |::|   |               \:::\   \/____/            |::|  ~|
+//       \::::::/    /                                 \:::\    \                  /:::/    /             |::|   |                \:::\    \                |::|   |
+//        \::::/    /                                   \:::\____\                /:::/    /              \::|   |                 \:::\____\               \::|   |
+//         \::/    /                                     \::/    /                \::/    /                \:|   |                  \::/    /                \:|   |
+//          \/____/                                       \/____/                  \/____/                  \|___|                   \/____/                  \|___|
+//
+//  A simple staking token designed to incentivize hodling by GIGA
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
@@ -57,13 +81,14 @@ contract StakingContract {
     function createStake(uint256 amount, uint256 duration) external {
         require(amount > 0 && balances[msg.sender] >= amount, "Insufficient balance");
 
+        uint256 scaledAmount = amount.mul(10 ** uint256(decimals)); // Scale the amount by token decimals
         uint256 endTime = block.timestamp.add(duration.mul(1 days));
-        balances[msg.sender] = balances[msg.sender].sub(amount);
-        totalSupply = totalSupply.sub(amount);
+        balances[msg.sender] = balances[msg.sender].sub(scaledAmount);
+        totalSupply = totalSupply.sub(scaledAmount);
 
-        emit Transfer(msg.sender, address(0), amount); // Burn tokens
+        emit Transfer(msg.sender, address(0), scaledAmount); // Burn tokens
 
-        emit StakeStarted(msg.sender, amount, endTime);
+        emit StakeStarted(msg.sender, scaledAmount, endTime);
     }
 
     function endStake(uint256 stakeAmount) external {
