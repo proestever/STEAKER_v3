@@ -21,7 +21,6 @@
 //         \::/    /                                     \::/    /                \::/    /                \:|   |                  \::/    /                \:|   |
 //          \/____/                                       \/____/                  \/____/                  \|___|                   \/____/                  \|___|
 //
-//  A simple staking token designed to incentivize hodling by GIGA
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
@@ -34,8 +33,16 @@ contract StakingContract {
     string public symbol;
     uint8 public decimals;
 
-    mapping(address => uint256) private balances;
+    struct Stake {
+        uint256 amount;
+        uint256 startTime;
+        uint256 endTime;
+        bool active;
+    }
+
+    mapping(address => Stake[]) private stakes;
     mapping(address => mapping(address => uint256)) private allowances;
+    mapping(address => uint256) private balances;
 
     uint256 private totalSupply;
 
@@ -57,15 +64,17 @@ contract StakingContract {
     }
 
     function transfer(address recipient, uint256 amount) public returns (bool) {
-        _transfer(msg.sender, recipient, amount);
+        uint256 scaledAmount = amount.mul(10 ** uint256(decimals)); // Scale the amount by token decimals
+        _transfer(msg.sender, recipient, scaledAmount);
         return true;
     }
 
     function transferFrom(address sender, address recipient, uint256 amount) public returns (bool) {
+        uint256 scaledAmount = amount.mul(10 ** uint256(decimals)); // Scale the amount by token decimals
         uint256 currentAllowance = allowances[sender][msg.sender];
-        require(currentAllowance >= amount, "Insufficient allowance");
-        _transfer(sender, recipient, amount);
-        _approve(sender, msg.sender, currentAllowance.sub(amount));
+        require(currentAllowance >= scaledAmount, "Insufficient allowance");
+        _transfer(sender, recipient, scaledAmount);
+        _approve(sender, msg.sender, currentAllowance.sub(scaledAmount));
         return true;
     }
 
@@ -88,26 +97,40 @@ contract StakingContract {
 
         emit Transfer(msg.sender, address(0), scaledAmount); // Burn tokens
 
+        stakes[msg.sender].push(Stake(scaledAmount, block.timestamp, endTime, true));
         emit StakeStarted(msg.sender, scaledAmount, endTime);
     }
 
-    function endStake(uint256 stakeAmount) external {
-        require(stakeAmount > 0, "Invalid stake amount");
+    function endStake(uint256 stakeIndex) external {
+        require(stakeIndex < stakes[msg.sender].length, "Invalid stake index");
 
-        uint256 penalty = calculatePenalty(stakeAmount);
-        uint256 reward = stakeAmount.sub(penalty);
+        Stake storage stake = stakes[msg.sender][stakeIndex];
+        require(stake.active, "Stake already ended");
+
+        uint256 penalty = calculatePenalty(stake.amount);
+        uint256 reward = stake.amount.sub(penalty);
         balances[msg.sender] = balances[msg.sender].add(reward);
         totalSupply = totalSupply.add(reward);
 
+        stake.active = false;
+
         emit Transfer(address(0), msg.sender, reward); // Mint tokens
 
-        emit StakeEnded(msg.sender, stakeAmount, penalty);
+        emit StakeEnded(msg.sender, stake.amount, penalty);
     }
 
     function calculatePenalty(uint256 stakeAmount) internal view returns (uint256) {
         uint256 maxPenalty = stakeAmount.div(10);
         uint256 penalty = block.timestamp.div(1000).mul(maxPenalty);
         return penalty;
+    }
+
+    function getStakeIndexes(address staker) public view returns (uint256[] memory) {
+        uint256[] memory indexes = new uint256[](stakes[staker].length);
+        for (uint256 i = 0; i < stakes[staker].length; i++) {
+            indexes[i] = i;
+        }
+        return indexes;
     }
 
     function _transfer(address sender, address recipient, uint256 amount) internal {
