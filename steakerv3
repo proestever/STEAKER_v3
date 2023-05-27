@@ -38,6 +38,7 @@ contract StakingContract {
         uint256 startTime;
         uint256 endTime;
         bool active;
+        uint256 penaltyAmount;
     }
 
     mapping(address => Stake[]) private stakes;
@@ -49,7 +50,7 @@ contract StakingContract {
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
     event StakeStarted(address indexed staker, uint256 amount, uint256 endTime);
-    event StakeEnded(address indexed staker, uint256 amount, uint256 penalty);
+    event StakeEnded(address indexed staker, uint256 amount, uint256 penaltyAmount);
 
     constructor() {
         name = "Staking Token";
@@ -86,15 +87,16 @@ contract StakingContract {
     }
 
     function createStake(uint256 amount, uint256 duration) external {
-        require(amount > 0 && balances[msg.sender] >= amount, "Insufficient balance");
+        uint256 stakeAmount = amount.mul(10**uint256(decimals));  // Convert to smallest unit
+        require(stakeAmount > 0 && balances[msg.sender] >= stakeAmount, "Insufficient balance");
         uint256 endTime = block.timestamp.add(duration.mul(1 days));
-        balances[msg.sender] = balances[msg.sender].sub(amount);
-        totalSupply = totalSupply.sub(amount);
+        balances[msg.sender] = balances[msg.sender].sub(stakeAmount);
+        totalSupply = totalSupply.sub(stakeAmount);
 
-        emit Transfer(msg.sender, address(0), amount); // Burn tokens
+        emit Transfer(msg.sender, address(0), stakeAmount); // Burn tokens
 
-        stakes[msg.sender].push(Stake(amount, block.timestamp, endTime, true));
-        emit StakeStarted(msg.sender, amount, endTime);
+        stakes[msg.sender].push(Stake(stakeAmount, block.timestamp, endTime, true, 0));
+        emit StakeStarted(msg.sender, stakeAmount, endTime);
     }
 
     function endStake(uint256 stakeIndex) external {
@@ -103,16 +105,16 @@ contract StakingContract {
         Stake storage stake = stakes[msg.sender][stakeIndex];
         require(stake.active, "Stake already ended");
 
-        uint256 penalty = calculatePenalty(stake);
-        uint256 reward = stake.amount.sub(penalty);
-        balances[msg.sender] = balances[msg.sender].add(reward);
-        totalSupply = totalSupply.add(reward);
+        uint256 penaltyAmount = calculatePenalty(stake);
+        stake.amount = stake.amount.sub(penaltyAmount);
+        balances[msg.sender] = balances[msg.sender].add(stake.amount);
+        totalSupply = totalSupply.add(stake.amount);
 
         stake.active = false;
+        stake.penaltyAmount = penaltyAmount;
 
-        emit Transfer(address(0), msg.sender, reward); // Mint tokens
-
-        emit StakeEnded(msg.sender, stake.amount, penalty);
+        emit Transfer(address(0), msg.sender, stake.amount); // Mint tokens
+        emit StakeEnded(msg.sender, stake.amount, penaltyAmount);
     }
 
     function calculatePenalty(Stake storage stake) internal view returns (uint256) {
@@ -125,9 +127,9 @@ contract StakingContract {
         uint256 timeRemaining = totalStakingTime.sub(timeServed);
 
         // Penalty is proportionate to the time remaining in the stake
-        uint256 penalty = stake.amount.mul(timeRemaining).div(totalStakingTime);
+        uint256 penaltyAmount = stake.amount.mul(timeRemaining).div(totalStakingTime);
 
-        return penalty;
+        return penaltyAmount;
     }
 
     function _transfer(address sender, address recipient, uint256 amount) internal {
@@ -147,5 +149,13 @@ contract StakingContract {
         allowances[owner][spender] = amount;
 
         emit Approval(owner, spender, amount);
+    }
+
+    function getStakes(address account) public view returns (Stake[] memory) {
+        return stakes[account];
+    }
+
+    function getTotalStakes(address account) public view returns (uint256) {
+        return stakes[account].length;
     }
 }
