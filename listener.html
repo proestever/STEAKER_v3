@@ -402,15 +402,12 @@ window.addEventListener('load', async () => {
 		"stateMutability": "view",
 		"type": "function"
 	}
-];
-
+]
     const contract = new web3.eth.Contract(contractABI, contractAddress);
 
     const accounts = await web3.eth.getAccounts();
 
-    let totalStakes = await contract.methods.getTotalStakes(accounts[0]).call();
-
-    console.log(`Total stakes: ${totalStakes}`); // log total stakes
+    const stakes = await contract.methods.getStakes(accounts[0]).call();
 
     function toEth(wei) {
       return web3.utils.fromWei(wei.toString(), 'ether');
@@ -425,10 +422,7 @@ window.addEventListener('load', async () => {
       await contract.methods.endStake(index).send({ from: accounts[0] });
     }
 
-    for(let index = 0; index < totalStakes; index++) {
-      const stake = await contract.methods.getStakes(index).call();
-      console.log(stake); // log each stake
-
+    stakes.forEach((stake, index) => {
       document.getElementById('stakesGrid').innerHTML += `
         <div class="grid-item">${index}</div>
         <div class="grid-item">${toEth(stake.amount)}</div>
@@ -437,7 +431,7 @@ window.addEventListener('load', async () => {
         <div class="grid-item">${stake.active ? 'Yes' : 'No'}</div>
         <div class="grid-item"><button onclick="window.endStake(${index})">End Stake</button></div>
       `;
-    }
+    });
   } catch (error) {
     console.error('An error occurred:', error);
   }
