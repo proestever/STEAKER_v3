@@ -1,24 +1,45 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Stake Viewer</title>
-  <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
+<style>
+.grid-container {
+  display: grid;
+  grid-template-columns: auto auto auto auto auto auto;
+  padding: 10px;
+}
+
+.grid-item {
+  border: 1px solid rgba(0, 0, 0, 0.8);
+  padding: 20px;
+  font-size: 20px;
+  text-align: center;
+}
+</style>
+<script src="https://cdn.jsdelivr.net/gh/ethereum/web3.js@1.3.0/dist/web3.min.js"></script>
 </head>
 <body>
-  <h1>Stake Viewer</h1>
-  <div id="stakeGrid"></div>
+<div id="stakesGrid" class="grid-container">
+  <div class="grid-item">Stake Index</div>
+  <div class="grid-item">Amount</div>
+  <div class="grid-item">Start (Days)</div>
+  <div class="grid-item">End (Days)</div>
+  <div class="grid-item">Claimed</div>
+  <div class="grid-item">Action</div>
+</div>
 
-  <script>
-    window.addEventListener('load', async () => {
-      // Check if MetaMask is available
-      if (typeof window.ethereum !== 'undefined') {
-        await window.ethereum.enable();
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
+<script>
+window.addEventListener('load', async () => {
+  if (window.ethereum) {
+    window.web3 = new Web3(ethereum);
+    await ethereum.enable();
+  } else if (window.web3) {
+    window.web3 = new Web3(web3.currentProvider);
+  } else {
+    console.log('Non-Ethereum browser detected. Consider installing MetaMask!');
+  }
 
-        // Contract address and ABI
-        const contractAddress = '0xAa2fBeF17158299B2eCcc4072f3EF790aC26064A';
-        const contractABI = [
+  const contractAddress = '0xAa2fBeF17158299B2eCcc4072f3EF790aC26064A';
+  const contractABI = [
 	{
 		"inputs": [],
 		"stateMutability": "nonpayable",
@@ -335,31 +356,43 @@
 	}
 ];
 
-        // Connect to the contract
-        const contract = new ethers.Contract(contractAddress, contractABI, signer);
+  const contract = new web3.eth.Contract(contractABI, contractAddress);
 
-        // Fetch stakes from the user's address
-        const userAddress = await signer.getAddress();
-        const stakeIndexes = await contract.getStakeIndexes(userAddress);
-        const stakes = [];
+  const accounts = await web3.eth.getAccounts();
 
-        for (const index of stakeIndexes) {
-          const stake = await contract.stakes(userAddress, index);
-          stakes.push(stake);
-        }
+  let index = 0;
+  const stakesGrid = document.getElementById('stakesGrid');
 
-        // Display stakes in a grid format
-        const stakeGrid = document.getElementById('stakeGrid');
+  function toEth(wei) {
+    return web3.utils.fromWei(wei, 'ether');
+  }
 
-        for (const stake of stakes) {
-          const stakeElement = document.createElement('div');
-          stakeElement.textContent = `Amount: ${stake.amount}, Start Time: ${new Date(stake.startTime * 1000)}, End Time: ${new Date(stake.endTime * 1000)}`;
-          stakeGrid.appendChild(stakeElement);
-        }
-      } else {
-        console.log('MetaMask not available');
-      }
-    });
-  </script>
+  function toDays(seconds) {
+    return Math.floor(seconds / 86400);
+  }
+
+  window.claimStake = async function(index) {
+    // Call the contract method to claim stake
+    await contract.methods.claim(index).send({ from: accounts[0] });
+  }
+
+  while (true) {
+    try {
+      const stake = await contract.methods.getStake(accounts[0], index).call();
+      stakesGrid.innerHTML += `
+        <div class="grid-item">${index}</div>
+        <div class="grid-item">${toEth(stake.amount)}</div>
+        <div class="grid-item">${toDays(stake.start)}</div>
+        <div class="grid-item">${toDays(stake.end)}</div>
+        <div class="grid-item">${stake.claimed}</div>
+        <div class="grid-item"><button onclick="window.claimStake(${index})">Claim Stake</button></div>
+      `;
+      index++;
+    } catch (error) {
+      break;
+    }
+  }
+});
+</script>
 </body>
 </html>
