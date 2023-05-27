@@ -422,7 +422,7 @@ window.addEventListener('load', async () => {
   }
 
   for(let index = 0; index < totalStakes; index++) {
-    const stake = await contract.methods.getStakes(accounts[0], index).call();
+    const stake = await contract.methods.getStakes(index).call();
     document.getElementById('stakesGrid').innerHTML += `
       <div class="grid-item">${index}</div>
       <div class="grid-item">${toEth(stake.amount)}</div>
