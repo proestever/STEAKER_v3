@@ -1,0 +1,117 @@
+//
+//           _____                _____                    _____                    _____                    _____                    _____                    _____
+//          /\    \              /\    \                  /\    \                  /\    \                  /\    \                  /\    \                  /\    \
+//         /::\    \            /::\    \                /::\    \                /::\    \                /::\____\                /::\    \                /::\    \
+//        /::::\    \           \:::\    \              /::::\    \              /::::\    \              /:::/    /               /::::\    \              /::::\    \
+//       /::::::\    \           \:::\    \            /::::::\    \            /::::::\    \            /:::/    /               /::::::\    \            /::::::\    \
+//      /:::/\:::\    \           \:::\    \          /:::/\:::\    \          /:::/\:::\    \          /:::/    /               /:::/\:::\    \          /:::/\:::\    \
+//     /:::/__\:::\    \           \:::\    \        /:::/__\:::\    \        /:::/__\:::\    \        /:::/____/               /:::/__\:::\    \        /:::/__\:::\    \
+//     \:::\   \:::\    \          /::::\    \      /::::\   \:::\    \      /::::\   \:::\    \      /::::\    \              /::::\   \:::\    \      /::::\   \:::\    \
+//   ___\:::\   \:::\    \        /::::::\    \    /::::::\   \:::\    \    /::::::\   \:::\    \    /::::::\____\________    /::::::\   \:::\    \    /::::::\   \:::\    \
+//  /\   \:::\   \:::\    \      /:::/\:::\    \  /:::/\:::\   \:::\    \  /:::/\:::\   \:::\    \  /:::/\:::::::::::\    \  /:::/\:::\   \:::\    \  /:::/\:::\   \:::\____\
+// /::\   \:::\   \:::\____\    /:::/  \:::\____\/:::/__\:::\   \:::\____\/:::/  \:::\   \:::\____\/:::/  |:::::::::::\____\/:::/__\:::\   \:::\____\/:::/  \:::\   \:::|    |
+// \:::\   \:::\   \::/    /   /:::/    \::/    /\:::\   \:::\   \::/    /\::/    \:::\  /:::/    /\::/   |::|~~~|~~~~~     \:::\   \:::\   \::/    /\::/   |::::\  /:::|____|
+//  \:::\   \:::\   \/____/   /:::/    / \/____/  \:::\   \:::\   \/____/  \/____/ \:::\/:::/    /  \/____|::|   |           \:::\   \:::\   \/____/  \/____|:::::\/:::/    /
+//   \:::\   \:::\    \      /:::/    /            \:::\   \:::\    \               \::::::/    /         |::|   |            \:::\   \:::\    \            |:::::::::/    /
+//    \:::\   \:::\____\    /:::/    /              \:::\   \:::\____\               \::::/    /          |::|   |             \:::\   \:::\____\           |::|\::::/    /
+//     \:::\  /:::/    /    \::/    /                \:::\   \::/    /               /:::/    /           |::|   |              \:::\   \::/    /           |::| \::/____/
+//      \:::\/:::/    /      \/____/                  \:::\   \/____/               /:::/    /            |::|   |               \:::\   \/____/            |::|  ~|
+//       \::::::/    /                                 \:::\    \                  /:::/    /             |::|   |                \:::\    \                |::|   |
+//        \::::/    /                                   \:::\____\                /:::/    /              \::|   |                 \:::\____\               \::|   |
+//         \::/    /                                     \::/    /                \::/    /                \:|   |                  \::/    /                \:|   |
+//          \/____/                                       \/____/                  \/____/                  \|___|                   \/____/                  \|___|
+//
+//  A simple staking token designed to incentivize hodling by GIGA
+//  SPDX-License-Identifier: UNLICENSED
+
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+
+contract StakingContract {
+    using SafeMath for uint256;
+
+    struct Stake {
+        uint256 amount;
+        uint256 startTime;
+        uint256 endTime;
+        bool active;
+    }
+
+    uint256 constant DECIMALS = 1e18;
+    uint256 constant ANNUAL_INFLATION_RATE = 369; // 3.69% inflation rate represented as basis points
+    uint256 constant SECONDS_PER_DAY = 86400;
+    uint256 constant MAX_STAKE_DURATION = 369;
+    uint256 constant PENALTY_DENOMINATOR = 100;
+
+    uint256 public totalSupply = 1e12 * DECIMALS; // 1,000,000,000,000 initial supply
+    mapping(address => Stake[]) public stakes;
+    mapping(address => uint256) public balances;
+    address public rewardAddress = 0x36986C8243829EEB59E23c9CbDC22b5EB30C11B1;
+
+    event StakeStarted(address indexed staker, uint256 amount, uint256 endTime);
+    event StakeEnded(address indexed staker, uint256 amount, uint256 penalty);
+
+    modifier validStakeDuration(uint256 duration) {
+        require(duration >= 1 && duration <= MAX_STAKE_DURATION, "Invalid stake duration");
+        _;
+    }
+
+    function createStake(uint256 amount, uint256 duration) external validStakeDuration(duration) {
+        require(amount > 0 && balances[msg.sender] >= amount, "Insufficient balance");
+
+        uint256 endTime = block.timestamp.add(duration.mul(SECONDS_PER_DAY));
+        stakes[msg.sender].push(Stake(amount, block.timestamp, endTime, true));
+        balances[msg.sender] = balances[msg.sender].sub(amount);
+        totalSupply = totalSupply.add(amount);
+
+        emit StakeStarted(msg.sender, amount, endTime);
+    }
+
+    function endStake(uint256 stakeIndex) external {
+        require(stakeIndex < stakes[msg.sender].length, "Invalid stake index");
+
+        Stake storage stake = stakes[msg.sender][stakeIndex];
+        require(stake.active, "Stake already ended");
+
+        uint256 penalty = calculatePenalty();
+        uint256 reward = stake.amount.add(calculateReward(stake.amount, stake.startTime, stake.endTime));
+        balances[msg.sender] = balances[msg.sender].add(reward);
+
+        stake.active = false;
+        totalSupply = totalSupply.sub(reward);
+
+        if (penalty > 0) {
+            balances[rewardAddress] = balances[rewardAddress].add(penalty);
+            emit StakeEnded(msg.sender, reward, penalty);
+        } else {
+            emit StakeEnded(msg.sender, reward, 0);
+        }
+    }
+
+    function calculateReward(uint256 amount, uint256 startTime, uint256 endTime) internal pure returns (uint256) {
+        uint256 timeDiff = endTime.sub(startTime);
+        uint256 annualReward = amount.mul(ANNUAL_INFLATION_RATE).div(10000);
+        uint256 reward = timeDiff.mul(annualReward).div(SECONDS_PER_DAY.mul(365));
+
+        return reward;
+    }
+
+    function calculatePenalty() internal view returns (uint256) {
+        if (block.timestamp >= stakes[msg.sender][0].endTime) {
+            return 0;
+        }
+
+        uint256 timeRemaining = stakes[msg.sender][0].endTime.sub(block.timestamp);
+        uint256 maxPenalty = stakes[msg.sender][0].amount.mul(PENALTY_DENOMINATOR);
+        uint256 penalty = maxPenalty.mul(timeRemaining).div(SECONDS_PER_DAY.mul(MAX_STAKE_DURATION));
+
+        return penalty;
+    }
+
+    function getStakeDetails(address staker, uint256 index) public view returns (uint256 amount, uint256 startTime, uint256 endTime, bool active) {
+        require(index < stakes[staker].length, "Invalid stake index");
+        Stake memory stake = stakes[staker][index];
+        return (stake.amount, stake.startTime, stake.endTime, stake.active);
+    }
+}
