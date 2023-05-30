@@ -91,7 +91,7 @@ body {
 </head>
 <body>
 <div class="container">
-  <h1 class="title">Smart Contract Stakes</h1>
+  <h1 class="title">STEAKER STAKES</h1>
   <div id="stakesGrid" class="grid-container"></div>
 </div>
 
@@ -485,7 +485,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       } else if (value >= 1e6) {
         return (value / 1e6).toFixed(2) + 'M';
       } else {
-        return value.toFixed(2);
+        return (value / 1e3).toFixed(2) + 'K';
       }
     }
 
@@ -507,7 +507,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       row.className = 'grid-item';
       const isActive = stake.active;
       const statusLabel = isActive ? '' : '<div class="minted">Minted</div>';
-      const daysRemaining = calculateDaysRemaining(stake.endTime);
+      const daysRemaining = isActive ? calculateDaysRemaining(stake.endTime) : '';
 
       row.innerHTML = `
         <div>Stake ${index + 1}</div>
@@ -519,13 +519,13 @@ window.addEventListener('DOMContentLoaded', async () => {
       `;
       
       const startDay = row.children[2];
-      startDay.textContent = Math.floor(stake.startTime / 86400);
+      startDay.textContent = 'Start Day';
 
       const endDay = row.children[3];
-      endDay.textContent = Math.floor(stake.endTime / 86400);
+      endDay.textContent = 'End Day';
 
       const daysRemainingCell = row.children[4];
-      daysRemainingCell.textContent = `${daysRemaining} Days Remaining`;
+      daysRemainingCell.textContent = isActive ? `${daysRemaining} Days Remaining` : '';
 
       stakesGrid.appendChild(row);
     });
