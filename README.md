@@ -24,15 +24,6 @@ The contract includes the following features:
 - Allowance: Users can check the allowance granted to an address using the `allowance` function.
 - Staking Details: Users can retrieve information about their stakes using the `getStakes` and `getTotalStakes` functions.
 
-## Usage
-
-To use the StakingContract, follow these steps:
-
-1. Deploy the contract on a compatible Ethereum network (version ^0.8.0).
-2. Initialize the contract with the desired token name, symbol, and decimals.
-3. Mint and distribute the total token supply to the desired addresses.
-4. Users can then interact with the contract to stake, unstake, transfer, and check balances.
-
 ## Events
 
 The contract emits the following events:
