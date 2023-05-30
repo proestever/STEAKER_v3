@@ -83,14 +83,7 @@ body {
 <body>
 <div class="container">
   <h1 class="title">Smart Contract Stakes</h1>
-  <div id="stakesGrid" class="grid-container">
-    <div class="grid-item">Stake Index</div>
-    <div class="grid-item">Amount</div>
-    <div class="grid-item">Start (Days)</div>
-    <div class="grid-item">End (Days)</div>
-    <div class="grid-item">Active</div>
-    <div class="grid-item">Action</div>
-  </div>
+  <div id="stakesGrid" class="grid-container"></div>
 </div>
 
 <script>
@@ -136,6 +129,56 @@ window.addEventListener('DOMContentLoaded', async () => {
 			}
 		],
 		"name": "Approval",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "staker",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "penaltyAmount",
+				"type": "uint256"
+			}
+		],
+		"name": "StakeEnded",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "staker",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "endTime",
+				"type": "uint256"
+			}
+		],
+		"name": "StakeStarted",
 		"type": "event"
 	},
 	{
@@ -231,6 +274,24 @@ window.addEventListener('DOMContentLoaded', async () => {
 		"type": "function"
 	},
 	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "duration",
+				"type": "uint256"
+			}
+		],
+		"name": "createStake",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
 		"inputs": [],
 		"name": "decimals",
 		"outputs": [
@@ -246,24 +307,13 @@ window.addEventListener('DOMContentLoaded', async () => {
 	{
 		"inputs": [
 			{
-				"internalType": "address",
-				"name": "spender",
-				"type": "address"
-			},
-			{
 				"internalType": "uint256",
-				"name": "subtractedValue",
+				"name": "stakeIndex",
 				"type": "uint256"
 			}
 		],
-		"name": "decreaseAllowance",
-		"outputs": [
-			{
-				"internalType": "bool",
-				"name": "",
-				"type": "bool"
-			}
-		],
+		"name": "endStake",
+		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
 	},
@@ -271,24 +321,65 @@ window.addEventListener('DOMContentLoaded', async () => {
 		"inputs": [
 			{
 				"internalType": "address",
-				"name": "spender",
+				"name": "account",
 				"type": "address"
-			},
+			}
+		],
+		"name": "getStakes",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "uint256",
+						"name": "amount",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "startTime",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "endTime",
+						"type": "uint256"
+					},
+					{
+						"internalType": "bool",
+						"name": "active",
+						"type": "bool"
+					},
+					{
+						"internalType": "uint256",
+						"name": "penaltyAmount",
+						"type": "uint256"
+					}
+				],
+				"internalType": "struct StakingContract.Stake[]",
+				"name": "",
+				"type": "tuple[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "account",
+				"type": "address"
+			}
+		],
+		"name": "getTotalStakes",
+		"outputs": [
 			{
 				"internalType": "uint256",
-				"name": "addedValue",
+				"name": "",
 				"type": "uint256"
 			}
 		],
-		"name": "increaseAllowance",
-		"outputs": [
-			{
-				"internalType": "bool",
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"stateMutability": "nonpayable",
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
@@ -318,23 +409,10 @@ window.addEventListener('DOMContentLoaded', async () => {
 		"type": "function"
 	},
 	{
-		"inputs": [],
-		"name": "totalSupply",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
 		"inputs": [
 			{
 				"internalType": "address",
-				"name": "to",
+				"name": "recipient",
 				"type": "address"
 			},
 			{
@@ -358,12 +436,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 		"inputs": [
 			{
 				"internalType": "address",
-				"name": "from",
+				"name": "sender",
 				"type": "address"
 			},
 			{
 				"internalType": "address",
-				"name": "to",
+				"name": "recipient",
 				"type": "address"
 			},
 			{
