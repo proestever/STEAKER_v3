@@ -72,6 +72,15 @@ body {
   margin-bottom: 20px;
 }
 
+.black-label {
+  color: #000;
+}
+
+.minted {
+  background-color: #000;
+  color: #fff;
+}
+
 @media (max-width: 600px) {
   .container {
     padding: 10px;
@@ -469,15 +478,22 @@ window.addEventListener('DOMContentLoaded', async () => {
     const stakes = await contract.methods.getStakes(accounts[0]).call();
 
     function formatValue(value) {
-      if (value >= 1e9) {
+      if (value >= 1e12) {
+        return (value / 1e12).toFixed(2) + 'T';
+      } else if (value >= 1e9) {
         return (value / 1e9).toFixed(2) + 'B';
       } else if (value >= 1e6) {
         return (value / 1e6).toFixed(2) + 'M';
-      } else if (value >= 1e3) {
-        return (value / 1e3).toFixed(2) + 'K';
       } else {
         return value.toFixed(2);
       }
+    }
+
+    function calculateDaysRemaining(endTime) {
+      const currentTime = Math.floor(Date.now() / 1000);
+      const secondsRemaining = endTime - currentTime;
+      const daysRemaining = Math.floor(secondsRemaining / 86400);
+      return daysRemaining;
     }
 
     window.endStake = async function(index) {
@@ -489,14 +505,28 @@ window.addEventListener('DOMContentLoaded', async () => {
     stakes.forEach((stake, index) => {
       const row = document.createElement('div');
       row.className = 'grid-item';
+      const isActive = stake.active;
+      const statusLabel = isActive ? '' : '<div class="minted">Minted</div>';
+      const daysRemaining = calculateDaysRemaining(stake.endTime);
+
       row.innerHTML = `
         <div>Stake ${index + 1}</div>
         <div>${formatValue(stake.amount)}</div>
-        <div>${Math.floor(stake.startTime / 86400)}</div>
-        <div>${Math.floor(stake.endTime / 86400)}</div>
-        <div>${stake.active ? 'Yes' : 'No'}</div>
-        <div><button onclick="window.endStake(${index})" class="btn">End Stake</button></div>
+        <div>Start Day</div>
+        <div>End Day</div>
+        <div>${isActive ? 'Yes' : statusLabel}</div>
+        <div>${isActive ? `<button onclick="window.endStake(${index})" class="btn">End Stake</button>` : ''}</div>
       `;
+      
+      const startDay = row.children[2];
+      startDay.textContent = Math.floor(stake.startTime / 86400);
+
+      const endDay = row.children[3];
+      endDay.textContent = Math.floor(stake.endTime / 86400);
+
+      const daysRemainingCell = row.children[4];
+      daysRemainingCell.textContent = `${daysRemaining} Days Remaining`;
+
       stakesGrid.appendChild(row);
     });
   } catch (error) {
